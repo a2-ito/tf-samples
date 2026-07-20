@@ -41,3 +41,28 @@ resource "aws_security_group" "app" {
 
   tags = { Name = "todo-app-sg" }
 }
+
+# RDS 専用セキュリティグループ。
+# ECS(app SG)からの MySQL 3306 のみ ingress を許可する(最小権限)。
+resource "aws_security_group" "rds" {
+  name        = "todo-rds-sg"
+  description = "RDS SG: allow MySQL 3306 from the app(ECS) SG only"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "MySQL from ECS(app SG)"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "todo-rds-sg" }
+}
