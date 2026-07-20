@@ -5,8 +5,10 @@ module "network" {
 module "rds" {
   source = "./modules/rds"
 
-  subnet_ids        = module.network.subnet_ids
-  security_group_id = module.network.security_group_id
+  subnet_ids = module.network.subnet_ids
+  # 【検証用】RDS には ECS からの ingress を持たない専用 SG を割り当てる。
+  # 通常運用に戻す場合は module.network.security_group_id へ戻す。
+  security_group_id = module.network.rds_security_group_id
   db_name           = var.db_name
   db_user           = var.db_user
   db_pass           = var.db_pass
