@@ -1,0 +1,27 @@
+# Trivy (IaC misconfiguration scan) の設定。
+# 実行: make scan-trivy
+#
+# tfsec は開発終了し Trivy の misconfiguration scan に統合されたため、
+# ルール体系は tfsec 由来(AVD-AWS-xxxx)のものがそのまま使われる。
+
+scan:
+  # .terraform 配下(terraform init で取得した外部モジュール)は自リポジトリの責務外
+  skip-dirs:
+    - "**/.terraform"
+
+misconfiguration:
+  terraform:
+    exclude-downloaded-modules: true
+
+severity:
+  - LOW
+  - MEDIUM
+  - HIGH
+  - CRITICAL
+
+# 検出があっても make は成功扱いにする(現状は検出内容の可視化が目的)。
+# CI ゲートとして落としたい場合は 1 にする。
+exit-code: 0
+
+# 除外は現時点でゼロ。除外する場合は .trivyignore.yaml を作成し、
+# id と理由(statement)をセットで記述する。
