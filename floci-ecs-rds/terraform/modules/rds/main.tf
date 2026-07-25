@@ -24,9 +24,36 @@ resource "aws_iam_role" "monitoring" {
   tags               = { Name = "todo-rds-monitoring-role" }
 }
 
-resource "aws_iam_role_policy_attachment" "monitoring" {
-  role       = aws_iam_role.monitoring.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+# AWS 管理ポリシー AmazonRDSEnhancedMonitoringRole と同等の権限をインラインで定義する。
+# Floci には AWS 管理ポリシーが存在せず、AttachRolePolicy が NoSuchEntity で失敗するため。
+data "aws_iam_policy_document" "monitoring" {
+  statement {
+    sid    = "EnableCreationAndManagementOfRDSCloudwatchLogGroups"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:PutRetentionPolicy",
+    ]
+    resources = ["arn:aws:logs:*:*:log-group:RDS*"]
+  }
+
+  statement {
+    sid    = "EnableCreationAndManagementOfRDSCloudwatchLogStreams"
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+      "logs:GetLogEvents",
+    ]
+    resources = ["arn:aws:logs:*:*:log-group:RDS*:log-stream:*"]
+  }
+}
+
+resource "aws_iam_role_policy" "monitoring" {
+  name   = "todo-rds-monitoring-policy"
+  role   = aws_iam_role.monitoring.id
+  policy = data.aws_iam_policy_document.monitoring.json
 }
 
 resource "aws_db_instance" "todo" {
