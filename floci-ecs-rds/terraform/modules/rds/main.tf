@@ -4,6 +4,31 @@ resource "aws_db_subnet_group" "main" {
   tags       = { Name = "todo-db-subnet" }
 }
 
+# --- 拡張モニタリング(Enhanced Monitoring)用の IAM ロール ---
+# RDS が OS レベルのメトリクスを CloudWatch Logs に書き込むために引き受けるロール。
+data "aws_iam_policy_document" "monitoring_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["monitoring.rds.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "monitoring" {
+  name               = "todo-rds-monitoring-role"
+  assume_role_policy = data.aws_iam_policy_document.monitoring_assume.json
+  tags               = { Name = "todo-rds-monitoring-role" }
+}
+
+resource "aws_iam_role_policy_attachment" "monitoring" {
+  role       = aws_iam_role.monitoring.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
 resource "aws_db_instance" "todo" {
   identifier          = "todo-db"
   engine              = "mysql"
@@ -25,6 +50,16 @@ resource "aws_db_instance" "todo" {
   # 監視と認証
   performance_insights_enabled        = true
   iam_database_authentication_enabled = true
+
+  # 拡張モニタリング(60 秒間隔で OS メトリクスを収集)
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.monitoring.arn
+
+  # DB のログを CloudWatch Logs に出力する
+  enabled_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
+
+  # 単一 AZ 障害でサービスが停止しないよう Multi-AZ 構成にする
+  multi_az = true
 
   # マイナーバージョンのセキュリティ修正を自動適用する
   auto_minor_version_upgrade = true
