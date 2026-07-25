@@ -1,0 +1,24 @@
+# Checkov (IaC static analysis) の設定。
+# 実行: make scan-checkov
+
+directory:
+  - terraform
+
+framework:
+  - terraform
+
+# 1 件あたり 1 行 + ガイド URL のコンパクト表示
+compact: true
+quiet: true
+
+# .terraform 配下(terraform init で取得した外部モジュール)は自リポジトリの責務外
+skip-path:
+  - .*/\.terraform/.*
+
+# 検出があっても make は成功扱いにする(現状は検出内容の可視化が目的)。
+# CI ゲートとして落としたい場合は false にする。
+soft-fail: true
+
+# 除外は現時点でゼロ。除外する場合は理由コメント付きで以下に追記する。
+# skip-check:
+#   - CKV_AWS_XXX  # 理由

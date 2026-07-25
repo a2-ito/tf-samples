@@ -12,6 +12,9 @@ override.tf.json
 # clone した upstream アプリ(別リポジトリ管理)
 floci-ecs-rds/app/
 
+# IaC セキュリティスキャン(make scan)のレポート出力
+**/.scan/
+
 # Node.js
 **/node_modules/
 **/.next/
