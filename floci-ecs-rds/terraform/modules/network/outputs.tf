@@ -3,9 +3,14 @@ output "vpc_id" {
   value       = aws_vpc.main.id
 }
 
-output "subnet_ids" {
-  description = "サブネット ID の一覧(a, b)"
-  value       = [aws_subnet.a.id, aws_subnet.b.id]
+output "public_subnet_ids" {
+  description = "public サブネット ID の一覧(ECS 用: a, b)"
+  value       = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+}
+
+output "private_subnet_ids" {
+  description = "private サブネット ID の一覧(RDS 用: a, b)"
+  value       = [aws_subnet.private_a.id, aws_subnet.private_b.id]
 }
 
 output "security_group_id" {
@@ -14,6 +19,6 @@ output "security_group_id" {
 }
 
 output "rds_security_group_id" {
-  description = "【検証用】RDS 専用セキュリティグループ ID(ECS からの ingress なし)"
+  description = "RDS 専用セキュリティグループ ID(ECS からの 3306 のみ許可)"
   value       = aws_security_group.rds.id
 }
