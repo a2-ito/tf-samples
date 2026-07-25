@@ -12,7 +12,10 @@ resource "aws_internet_gateway" "main" {
 
 # --- VPC Flow Logs ---
 # VPC 内の通信を CloudWatch Logs に記録する。
+# Floci は CreateFlowLogs に未対応(UnsupportedOperation)のため既定では作らない。
+# 詳細は variables.tf の enable_flow_logs を参照。
 resource "aws_cloudwatch_log_group" "flow_log" {
+  count             = var.enable_flow_logs ? 1 : 0
   name              = "/aws/vpc/todo-flow-logs"
   retention_in_days = 7
   tags              = { Name = "todo-flow-logs" }
@@ -31,6 +34,8 @@ data "aws_iam_policy_document" "flow_log_assume" {
 }
 
 data "aws_iam_policy_document" "flow_log" {
+  count = var.enable_flow_logs ? 1 : 0
+
   statement {
     effect = "Allow"
     actions = [
@@ -39,28 +44,31 @@ data "aws_iam_policy_document" "flow_log" {
       "logs:DescribeLogStreams",
     ]
     # 書き込み先のロググループ配下のみに限定する
-    resources = ["${aws_cloudwatch_log_group.flow_log.arn}:*"]
+    resources = ["${aws_cloudwatch_log_group.flow_log[0].arn}:*"]
   }
 }
 
 resource "aws_iam_role" "flow_log" {
+  count              = var.enable_flow_logs ? 1 : 0
   name               = "todo-vpc-flow-log-role"
   assume_role_policy = data.aws_iam_policy_document.flow_log_assume.json
   tags               = { Name = "todo-vpc-flow-log-role" }
 }
 
 resource "aws_iam_role_policy" "flow_log" {
+  count  = var.enable_flow_logs ? 1 : 0
   name   = "todo-vpc-flow-log-policy"
-  role   = aws_iam_role.flow_log.id
-  policy = data.aws_iam_policy_document.flow_log.json
+  role   = aws_iam_role.flow_log[0].id
+  policy = data.aws_iam_policy_document.flow_log[0].json
 }
 
 resource "aws_flow_log" "main" {
+  count                = var.enable_flow_logs ? 1 : 0
   vpc_id               = aws_vpc.main.id
   traffic_type         = "ALL"
   log_destination_type = "cloud-watch-logs"
-  log_destination      = aws_cloudwatch_log_group.flow_log.arn
-  iam_role_arn         = aws_iam_role.flow_log.arn
+  log_destination      = aws_cloudwatch_log_group.flow_log[0].arn
+  iam_role_arn         = aws_iam_role.flow_log[0].arn
   tags                 = { Name = "todo-flow-log" }
 }
 

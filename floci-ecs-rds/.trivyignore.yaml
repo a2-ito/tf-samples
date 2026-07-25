@@ -30,6 +30,15 @@ misconfigurations:
       同じで、Floci に KMS エンドポイントを向けていないため。実 AWS へ適用する場合は
       performance_insights_kms_key_id を指定すること。
 
+  - id: AVD-AWS-0178
+    paths:
+      - "modules/network/main.tf"
+    statement: >-
+      VPC Flow Logs の定義は存在するが、Floci が CreateFlowLogs に未対応
+      (api error UnsupportedOperation)で apply が失敗するため
+      enable_flow_logs の既定を false にしている。count = 0 のため Trivy からは
+      「Flow Logs なし」と見える。実 AWS へ適用する場合は true にすれば解消する。
+
   - id: AVD-AWS-0177
     paths:
       - "modules/rds/main.tf"

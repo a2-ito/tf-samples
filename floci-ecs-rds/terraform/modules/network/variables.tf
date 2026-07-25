@@ -3,6 +3,18 @@ variable "app_port" {
   type        = number
 }
 
+variable "enable_flow_logs" {
+  description = <<-EOT
+    VPC Flow Logs(ロググループ / IAM ロール / aws_flow_log)を作成するか。
+    Floci は CreateFlowLogs に未対応で
+    (api error UnsupportedOperation: Operation CreateFlowLogs is not supported)、
+    apply が失敗するため既定では無効にしている。
+    実 AWS に適用する場合は true にする。
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "enable_route_table_association" {
   description = <<-EOT
     サブネットとルートテーブルの関連付け(aws_route_table_association)を作成するか。
