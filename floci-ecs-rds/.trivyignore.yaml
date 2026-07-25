@@ -1,0 +1,48 @@
+# Trivy の検出除外。id と理由(statement)をセットで記述する。
+# 実行: make scan-trivy
+#
+# id は AVD ID (AVD-AWS-xxxx) で指定する。レポート上の表示 (AWS-xxxx) とは
+# 接頭辞が異なる点に注意。
+# paths はスキャンルート (terraform ディレクトリ) からの相対パスで書く。
+
+misconfigurations:
+  - id: AVD-AWS-0104
+    paths:
+      - "modules/network/main.tf"
+    statement: >-
+      app SG の egress 全許可は意図的。ECR からのイメージ取得や外部 API 呼び出しに
+      必要で、絞るには VPC エンドポイントの用意が前提になりサンプルの範囲を超える。
+      RDS SG 側は egress を定義せず(ルール 0 件 = 全拒否)対応済み。
+
+  - id: AVD-AWS-0017
+    paths:
+      - "modules/network/main.tf"
+    statement: >-
+      VPC Flow Logs 用ロググループの KMS 暗号化は未対応。provider.tf の endpoints に
+      KMS が無く(Floci に向けていない)、aws_kms_key を作ると実 AWS へリクエストが
+      飛んで失敗するため。実 AWS へ適用する場合は kms_key_id を指定すること。
+
+  - id: AVD-AWS-0078
+    paths:
+      - "modules/rds/main.tf"
+    statement: >-
+      Performance Insights の顧客管理 KMS キー指定は未対応。理由は AVD-AWS-0017 と
+      同じで、Floci に KMS エンドポイントを向けていないため。実 AWS へ適用する場合は
+      performance_insights_kms_key_id を指定すること。
+
+  - id: AVD-AWS-0178
+    paths:
+      - "modules/network/main.tf"
+    statement: >-
+      VPC Flow Logs の定義は存在するが、Floci が CreateFlowLogs に未対応
+      (api error UnsupportedOperation)で apply が失敗するため
+      enable_flow_logs の既定を false にしている。count = 0 のため Trivy からは
+      「Flow Logs なし」と見える。実 AWS へ適用する場合は true にすれば解消する。
+
+  - id: AVD-AWS-0177
+    paths:
+      - "modules/rds/main.tf"
+    statement: >-
+      RDS の削除保護(deletion_protection)は意図的に無効。このサンプルは
+      make clean(terraform destroy)で環境を破棄する前提のため、有効にすると
+      destroy が失敗する。実 AWS の永続環境へ適用する場合は有効にすること。

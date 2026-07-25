@@ -1,5 +1,8 @@
 module "network" {
   source = "./modules/network"
+
+  # app SG の ingress をアプリポートのみに絞るために渡す
+  app_port = var.app_port
 }
 
 module "rds" {
