@@ -19,6 +19,20 @@ skip-path:
 # CI ゲートとして落としたい場合は false にする。
 soft-fail: true
 
-# 除外は現時点でゼロ。除外する場合は理由コメント付きで以下に追記する。
-# skip-check:
-#   - CKV_AWS_XXX  # 理由
+# 除外するチェック。追加する場合は必ず理由コメントを添える。
+skip-check:
+  # RDS の削除保護は意図的に無効。このサンプルは make clean(terraform destroy)で
+  # 環境を破棄する前提のため、有効にすると destroy が失敗する。
+  # 実 AWS の永続環境へ適用する場合は有効にすること。
+  - CKV_AWS_293
+
+  # app SG の egress 全許可は意図的。ECR からのイメージ取得や外部 API 呼び出しに
+  # 必要で、絞るには VPC エンドポイントの用意が前提になりサンプルの範囲を超える。
+  # (Trivy 側の AVD-AWS-0104 と同じ判断)
+  - CKV_AWS_382
+
+  # KMS による暗号化は未対応。provider.tf の endpoints に KMS が無く(Floci に
+  # 向けていない)、aws_kms_key を作ると実 AWS へリクエストが飛んで失敗する。
+  # (Trivy 側の AVD-AWS-0017 / AVD-AWS-0078 と同じ判断)
+  - CKV_AWS_158  # CloudWatch ロググループの KMS 暗号化
+  - CKV_AWS_354  # RDS Performance Insights の KMS CMK

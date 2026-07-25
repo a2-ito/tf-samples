@@ -1,3 +1,8 @@
+variable "app_port" {
+  description = "アプリの待ち受けポート。app SG の ingress をこのポートのみに絞るために使う。"
+  type        = number
+}
+
 variable "enable_route_table_association" {
   description = <<-EOT
     サブネットとルートテーブルの関連付け(aws_route_table_association)を作成するか。

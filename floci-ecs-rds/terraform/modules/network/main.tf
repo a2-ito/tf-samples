@@ -10,12 +10,69 @@ resource "aws_internet_gateway" "main" {
   tags   = { Name = "todo-igw" }
 }
 
+# --- VPC Flow Logs ---
+# VPC 内の通信を CloudWatch Logs に記録する。
+resource "aws_cloudwatch_log_group" "flow_log" {
+  name              = "/aws/vpc/todo-flow-logs"
+  retention_in_days = 7
+  tags              = { Name = "todo-flow-logs" }
+}
+
+data "aws_iam_policy_document" "flow_log_assume" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "flow_log" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogStreams",
+    ]
+    # 書き込み先のロググループ配下のみに限定する
+    resources = ["${aws_cloudwatch_log_group.flow_log.arn}:*"]
+  }
+}
+
+resource "aws_iam_role" "flow_log" {
+  name               = "todo-vpc-flow-log-role"
+  assume_role_policy = data.aws_iam_policy_document.flow_log_assume.json
+  tags               = { Name = "todo-vpc-flow-log-role" }
+}
+
+resource "aws_iam_role_policy" "flow_log" {
+  name   = "todo-vpc-flow-log-policy"
+  role   = aws_iam_role.flow_log.id
+  policy = data.aws_iam_policy_document.flow_log.json
+}
+
+resource "aws_flow_log" "main" {
+  vpc_id               = aws_vpc.main.id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.flow_log.arn
+  iam_role_arn         = aws_iam_role.flow_log.arn
+  tags                 = { Name = "todo-flow-log" }
+}
+
 # --- Public subnets (ECS) ---
+# map_public_ip_on_launch は無効。ECS サービス側で assign_public_ip = true を
+# 指定しているため、タスクは個別に public IP を得られる。サブネットの既定で
+# 全リソースに public IP を割り当てる必要はない。
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "us-east-1a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
   tags                    = { Name = "todo-public-a" }
 }
 
@@ -23,7 +80,7 @@ resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.2.0/24"
   availability_zone       = "us-east-1b"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
   tags                    = { Name = "todo-public-b" }
 }
 
@@ -84,21 +141,26 @@ resource "aws_route_table_association" "private_b" {
 }
 
 # --- Security groups ---
-# ECS(アプリ)用。ローカルエミュレータ前提で inbound を広く開けている。
+# ECS(アプリ)用。ingress は VPC 内からアプリポートのみ許可する。
+# 実運用で外部公開する場合は ALB を前段に置き、ALB の SG からのみ許可すること。
 resource "aws_security_group" "app" {
   name        = "todo-app-sg"
-  description = "Allow app and mysql traffic (local emulator)"
+  description = "App SG: allow the app port from within the VPC only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    description = "all inbound (local only)"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    description = "App port from within the VPC"
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
+  # egress は全許可のまま。ECR からのイメージ取得や外部 API 呼び出しに必要で、
+  # 絞るには VPC エンドポイントの用意が前提になるためサンプルの範囲を超える。
+  # (Trivy AVD-AWS-0177 と同様に .trivyignore.yaml で除外している)
   egress {
+    description = "all outbound (image pull and outbound API calls)"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -109,6 +171,7 @@ resource "aws_security_group" "app" {
 }
 
 # RDS 専用セキュリティグループ。ECS(app SG)からの MySQL 3306 のみ許可(最小権限)。
+# egress は定義しない(ルール 0 件 = 全拒否)。RDS は外向き通信を必要としない。
 resource "aws_security_group" "rds" {
   name        = "todo-rds-sg"
   description = "RDS SG: allow MySQL 3306 from the app(ECS) SG only"
@@ -120,13 +183,6 @@ resource "aws_security_group" "rds" {
     to_port         = 3306
     protocol        = "tcp"
     security_groups = [aws_security_group.app.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = { Name = "todo-rds-sg" }
