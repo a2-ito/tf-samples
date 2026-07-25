@@ -14,7 +14,7 @@ resource "aws_db_instance" "todo" {
   username            = var.db_user
   password            = var.db_pass
   skip_final_snapshot = true
-  publicly_accessible = true
+  publicly_accessible = false
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [var.security_group_id]
