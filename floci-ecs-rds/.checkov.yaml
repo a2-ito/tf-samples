@@ -36,3 +36,12 @@ skip-check:
   # (Trivy 側の AVD-AWS-0017 / AVD-AWS-0078 と同じ判断)
   - CKV_AWS_158  # CloudWatch ロググループの KMS 暗号化
   - CKV_AWS_354  # RDS Performance Insights の KMS CMK
+
+  # 誤検知。app SG は ECS サービスの network_configuration、rds SG は
+  # aws_db_instance の vpc_security_group_ids に実際にアタッチされているが、
+  # モジュール境界を越えた var.security_group_id の参照を解決できていない。
+  - CKV2_AWS_5
+
+  # ECS タスクの public IP 付与は意図的。NAT ゲートウェイも VPC エンドポイントも
+  # 持たない構成では、ECR からのイメージ取得にこれが必要になる。
+  - CKV_AWS_333

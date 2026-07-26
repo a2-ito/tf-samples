@@ -10,6 +10,14 @@ resource "aws_internet_gateway" "main" {
   tags   = { Name = "todo-igw" }
 }
 
+# VPC 作成時に自動生成される default SG。このサンプルでは使わないが、
+# 既定では全通しのため Terraform の管理下に置いてルールを空にする
+# (ingress / egress を書かない = ルール 0 件 = 全拒否)。
+resource "aws_default_security_group" "main" {
+  vpc_id = aws_vpc.main.id
+  tags   = { Name = "todo-default-sg" }
+}
+
 # --- VPC Flow Logs ---
 # VPC 内の通信を CloudWatch Logs に記録する。
 # Floci は CreateFlowLogs に未対応(UnsupportedOperation)のため既定では作らない。
