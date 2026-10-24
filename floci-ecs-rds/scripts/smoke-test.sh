@@ -16,10 +16,12 @@ APP_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{e
 echo "APP=$APP  APP_IP=$APP_IP"
 
 run() {
-  name="curl$$_$1"; docker rm -f "$name" >/dev/null 2>&1 || true
+  name="curl$$_$1"
+  docker rm -f "$name" >/dev/null 2>&1 || true
   docker run -d --name "$name" --network "$NET" curlimages/curl:latest sh -c "$2" >/dev/null 2>&1
   docker wait "$name" >/dev/null 2>&1 || true
-  docker logs "$name" 2>&1; docker rm -f "$name" >/dev/null 2>&1 || true
+  docker logs "$name" 2>&1
+  docker rm -f "$name" >/dev/null 2>&1 || true
 }
 
 echo "--- GET / ---"
