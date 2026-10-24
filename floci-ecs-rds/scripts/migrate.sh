@@ -18,17 +18,20 @@ DB_NAME="${DB_NAME:-todo_app}"
 
 echo "MySQL の起動を待機中... (${DB_HOST}:${DB_PORT})"
 for _ in $(seq 1 30); do
-  name="ping$$"; docker rm -f "$name" >/dev/null 2>&1 || true
+  name="ping$$"
+  docker rm -f "$name" >/dev/null 2>&1 || true
   docker run -d --name "$name" --network "$NET" mysql:8.0 \
     sh -c "mysqladmin -h $DB_HOST -P $DB_PORT -u $DB_USER -p$DB_PASS ping 2>&1" >/dev/null 2>&1
   docker wait "$name" >/dev/null 2>&1 || true
-  out=$(docker logs "$name" 2>&1); docker rm -f "$name" >/dev/null 2>&1 || true
+  out=$(docker logs "$name" 2>&1)
+  docker rm -f "$name" >/dev/null 2>&1 || true
   echo "$out" | grep -q "mysqld is alive" && break
   sleep 2
 done
 
 echo "Drizzle マイグレーションを実行中..."
-name="migrate$$"; docker rm -f "$name" >/dev/null 2>&1 || true
+name="migrate$$"
+docker rm -f "$name" >/dev/null 2>&1 || true
 docker run -d --name "$name" --network "$NET" \
   -v "$APPDIR":/app -w /app \
   -e DB_TYPE=mysql -e DB_HOST="$DB_HOST" -e DB_PORT="$DB_PORT" -e DB_USER="$DB_USER" -e DB_PASS="$DB_PASS" -e DB_NAME="$DB_NAME" \
